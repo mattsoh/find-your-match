@@ -1,5 +1,8 @@
 # Astro Starter Kit: Basics
 
+ChatGPT prompt:
+build me a demo website, i am designing a website similar to tinder and tic tock when you scroll through programming/hardware project ideas where you can like them to show oyur supprt or donate, and offer feedback or advice for the person building the project, the unterfcace should be intuiitive and easy to use.
+
 ```sh
 npm create astro@latest -- --template basics
 ```
@@ -10,7 +13,7 @@ npm create astro@latest -- --template basics
 
 Inside of your Astro project, you'll see the following folders and files:
 
-```text
+```text`
 /
 ├── public/
 │   └── favicon.svg

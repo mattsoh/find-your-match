@@ -1,11 +1,826 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const projects = [
+	{
+		title: 'Modular Solar Desk Hub',
+		category: 'Hardware',
+		difficulty: 'Intermediate',
+		funding: '$2,180',
+		goal: '$5,000',
+		supporters: 148,
+		creator: 'Avery L.',
+		summary:
+			'A compact solar-powered desk hub that runs ESP32 projects, charges tools, and logs energy usage.',
+		tags: ['Energy', 'ESP32', 'Open Source'],
+		progress: 0.44,
+		need: 'Looking for enclosure feedback and battery safety tips.'
+	},
+	{
+		title: 'Adaptive Keyboard for One-Handed Builders',
+		category: 'Programming',
+		difficulty: 'Advanced',
+		funding: '$3,960',
+		goal: '$7,200',
+		supporters: 212,
+		creator: 'Priya S.',
+		summary:
+			'Firmware and layout experiments to help makers type and code with one hand using layered macros.',
+		tags: ['Firmware', 'Accessibility', 'QMK'],
+		progress: 0.55,
+		need: 'Need testers for macro layout and latency tuning.'
+	},
+	{
+		title: 'Micro-Rover AI Camera Rig',
+		category: 'Hardware',
+		difficulty: 'Beginner',
+		funding: '$820',
+		goal: '$2,400',
+		supporters: 67,
+		creator: 'Noah K.',
+		summary:
+			'A tiny rover that maps a room and streams computer vision tags to a live dashboard.',
+		tags: ['Raspberry Pi', 'Vision', 'Robotics'],
+		progress: 0.34,
+		need: 'Advice on indoor mapping and low-light camera picks.'
+	},
+	{
+		title: 'Ocean-Safe Power Monitor',
+		category: 'Programming',
+		difficulty: 'Intermediate',
+		funding: '$1,510',
+		goal: '$3,000',
+		supporters: 94,
+		creator: 'Zara M.',
+		summary:
+			'An open dashboard for tracking marine battery packs and predicting safe discharge windows.',
+		tags: ['IoT', 'Data Viz', 'Sustainability'],
+		progress: 0.5,
+		need: 'Feedback on visualization layout and alert thresholds.'
+	}
+];
 ---
 
-<Layout>
-	<Welcome />
+<Layout title="Build The Future">
+	<div class="page">
+		<header class="topbar">
+			<div class="brand">
+				<span class="brand-mark"></span>
+				Build The Future
+			</div>
+			<div class="prize-pot">
+				<span>Total ad-revenue pot</span>
+				<strong>$128,400</strong>
+			</div>
+			<div class="top-actions">
+				<button class="ghost">Upload</button>
+				<button class="cta">Support</button>
+			</div>
+		</header>
+
+		<main class="viewer">
+			<div class="feed-shell" id="feed" aria-label="Project feed">
+				<div class="engagement-hud">
+					<div class="hud-item like-hud">
+						<span>Likes</span>
+						<strong id="likeCount">2,418</strong>
+					</div>
+					<div class="hud-item donate-hud">
+						<span>Donated</span>
+						<strong id="donateCount">$9,860</strong>
+					</div>
+				</div>
+				<div class="toast" id="toast" role="status" aria-live="polite"></div>
+				{projects.map((project, index) => (
+					<section class={`video-card ${index === 0 ? 'active' : ''}`} data-index={index}>
+							<div class="media">
+								<div class="media-overlay">
+									<span class="live">Live build</span>
+									<span class="difficulty">{project.difficulty}</span>
+								</div>
+								<div class="media-placeholder">
+									<p>Project video preview</p>
+								</div>
+								<div class="swipe-overlay swipe-like">
+									<span>Liked</span>
+								</div>
+								<div class="swipe-overlay swipe-donate">
+									<span>Donate</span>
+								</div>
+								<button class="chat-fab">Chat</button>
+							</div>
+							<div class="project-info">
+								<div>
+									<p class="tag">{project.category}</p>
+									<h1>{project.title}</h1>
+									<p class="creator">by {project.creator}</p>
+									<p class="summary">{project.summary}</p>
+								</div>
+								<div class="progress">
+									<div class="progress-bar" style={`--fill: ${project.progress * 100}%`}></div>
+									<div class="progress-meta">
+										<span>{project.funding}</span>
+										<span>Goal {project.goal}</span>
+									</div>
+								</div>
+							</div>
+						<p class="swipe-hint">Swipe left to donate · right to like · up for next</p>
+						</section>
+					))}
+			</div>
+			<aside class="side-actions">
+				<button class="pill chat-pill">Chat</button>
+				<button class="pill feedback-pill">Give feedback</button>
+				<div class="next-card">
+					<p class="next-label">Next up</p>
+					<p class="next-title">Swipe up</p>
+					<p class="next-meta">Swipe to react</p>
+				</div>
+			</aside>
+		</main>
+	</div>
 </Layout>
+
+<script>
+	const cards = Array.from(document.querySelectorAll('.video-card'));
+	const swipeThreshold = 80;
+	const verticalThreshold = 100;
+	let activeIndex = 0;
+	let likeCount = 2418;
+	let donateCount = 9860;
+	const likeCountEl = document.getElementById('likeCount');
+	const donateCountEl = document.getElementById('donateCount');
+	const toastEl = document.getElementById('toast');
+	let toastTimeout = null;
+
+	const formatNumber = (value) => value.toLocaleString();
+	const formatMoney = (value) => `$${value.toLocaleString()}`;
+	const updateCounts = () => {
+		if (likeCountEl) {
+			likeCountEl.textContent = formatNumber(likeCount);
+		}
+		if (donateCountEl) {
+			donateCountEl.textContent = formatMoney(donateCount);
+		}
+	};
+
+	const showToast = (message) => {
+		if (!toastEl) {
+			return;
+		}
+		toastEl.textContent = message;
+		toastEl.classList.add('show');
+		window.clearTimeout(toastTimeout);
+		toastTimeout = window.setTimeout(() => toastEl.classList.remove('show'), 1400);
+	};
+
+	const clearClasses = (card) => {
+		card.classList.remove('show-like', 'show-donate', 'flash-like', 'flash-donate');
+	};
+
+	const setActive = (nextIndex, direction) => {
+		const clampedIndex = Math.max(0, Math.min(cards.length - 1, nextIndex));
+		if (clampedIndex === activeIndex) {
+			return;
+		}
+
+		const currentCard = cards[activeIndex];
+		const nextCard = cards[clampedIndex];
+		if (currentCard) {
+			currentCard.classList.add(direction > 0 ? 'anim-up' : 'anim-down');
+			window.setTimeout(() => currentCard.classList.remove('anim-up', 'anim-down'), 300);
+			currentCard.classList.remove('active');
+		}
+		if (nextCard) {
+			nextCard.classList.add('active', 'anim-in');
+			window.setTimeout(() => nextCard.classList.remove('anim-in'), 320);
+		}
+		activeIndex = clampedIndex;
+	};
+
+	cards.forEach((card) => {
+		let startX = 0;
+		let startY = 0;
+		let tracking = false;
+		let pointerId = null;
+
+		card.addEventListener('pointerdown', (event) => {
+			tracking = true;
+			pointerId = event.pointerId;
+			startX = event.clientX;
+			startY = event.clientY;
+			card.setPointerCapture(pointerId);
+		});
+
+		card.addEventListener('pointermove', (event) => {
+			if (!tracking) {
+				return;
+			}
+
+			const dx = event.clientX - startX;
+			const dy = event.clientY - startY;
+			card.classList.add('dragging');
+			card.style.transform = `translate(${dx * 0.18}px, ${dy * 0.14}px) rotate(${dx * 0.05}deg)`;
+
+			if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 24) {
+				if (dx > 0) {
+					card.classList.add('show-like');
+					card.classList.remove('show-donate');
+				} else {
+					card.classList.add('show-donate');
+					card.classList.remove('show-like');
+				}
+			} else {
+				card.classList.remove('show-like', 'show-donate');
+			}
+		});
+
+		const endSwipe = (event) => {
+			if (!tracking) {
+				return;
+			}
+
+			tracking = false;
+			const dx = event.clientX - startX;
+			const dy = event.clientY - startY;
+			clearClasses(card);
+			card.classList.remove('dragging');
+			card.style.transform = '';
+
+			if (Math.abs(dx) > swipeThreshold && Math.abs(dx) > Math.abs(dy)) {
+				const className = dx > 0 ? 'flash-like' : 'flash-donate';
+				card.classList.add(className);
+				window.setTimeout(() => card.classList.remove(className), 650);
+				if (dx > 0) {
+					likeCount += 1;
+					updateCounts();
+					showToast('Liked +1');
+				} else {
+					const amount = 25;
+					donateCount += amount;
+					updateCounts();
+					showToast(`Donated $${amount}`);
+				}
+				return;
+			}
+
+			if (Math.abs(dy) > verticalThreshold && Math.abs(dy) > Math.abs(dx)) {
+				const direction = dy < 0 ? 1 : -1;
+				setActive(activeIndex + direction, direction);
+			}
+		};
+
+		card.addEventListener('pointerup', endSwipe);
+		card.addEventListener('pointercancel', endSwipe);
+		card.addEventListener('pointerleave', endSwipe);
+	});
+
+	const chatButtons = document.querySelectorAll('.chat-fab, .chat-pill');
+	chatButtons.forEach((button) => {
+		button.addEventListener('click', () => {
+			showToast('Chat opened (demo)');
+		});
+	});
+
+	const feedbackButtons = document.querySelectorAll('.feedback-pill');
+	feedbackButtons.forEach((button) => {
+		button.addEventListener('click', () => {
+			showToast('Feedback opened (demo)');
+		});
+	});
+
+	document.addEventListener('keydown', (event) => {
+		if (event.key === 'ArrowUp') {
+			event.preventDefault();
+			setActive(activeIndex - 1, -1);
+		}
+		if (event.key === 'ArrowDown') {
+			event.preventDefault();
+			setActive(activeIndex + 1, 1);
+		}
+		if (event.key === 'ArrowLeft') {
+			event.preventDefault();
+			showToast('Donate $25 (demo)');
+			donateCount += 25;
+			updateCounts();
+		}
+		if (event.key === 'ArrowRight') {
+			event.preventDefault();
+			showToast('Liked +1');
+			likeCount += 1;
+			updateCounts();
+		}
+	});
+
+	updateCounts();
+</script>
+
+<style>
+	:global(body) {
+		background: radial-gradient(circle at top, #f3f0e6 0%, #e9efe9 45%, #dfe7f2 100%);
+		overflow: hidden;
+	}
+
+	:global(html) {
+		overflow: hidden;
+	}
+
+	.page {
+		min-height: 100vh;
+		height: 100vh;
+		padding: 16px 4vw 24px;
+		background:
+			radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.7), transparent 40%),
+			radial-gradient(circle at 80% 0%, rgba(255, 234, 203, 0.7), transparent 40%),
+			linear-gradient(140deg, rgba(249, 243, 232, 0.9), rgba(214, 225, 238, 0.9));
+		position: relative;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		--topbar-height: 64px;
+	}
+
+	.page::before,
+	.page::after {
+		content: '';
+		position: absolute;
+		width: 320px;
+		height: 320px;
+		border-radius: 50%;
+		filter: blur(0px);
+		opacity: 0.35;
+		z-index: 0;
+	}
+
+	.page::before {
+		background: radial-gradient(circle, #ffdbb6 0%, transparent 70%);
+		top: -120px;
+		left: -120px;
+	}
+
+	.page::after {
+		background: radial-gradient(circle, #9dd0c8 0%, transparent 70%);
+		bottom: -140px;
+		right: -80px;
+	}
+
+	.topbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		position: relative;
+		z-index: 1;
+		gap: 24px;
+		height: var(--topbar-height);
+	}
+
+	.brand {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		font-weight: 700;
+		font-size: 20px;
+		letter-spacing: 0.02em;
+	}
+
+	.prize-pot {
+		display: grid;
+		gap: 4px;
+		padding: 8px 14px;
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.7);
+		border: 1px solid rgba(17, 24, 31, 0.08);
+		font-size: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.12em;
+		color: #2b3e4a;
+	}
+
+	.prize-pot strong {
+		font-size: 14px;
+		letter-spacing: 0.08em;
+		color: #0f1a20;
+	}
+
+	.brand-mark {
+		width: 36px;
+		height: 36px;
+		border-radius: 14px;
+		background: linear-gradient(140deg, #11181f 0%, #27445c 60%, #efb074 100%);
+		display: inline-block;
+		box-shadow: 0 12px 24px rgba(17, 24, 31, 0.3);
+	}
+
+	.top-actions {
+		display: flex;
+		gap: 10px;
+	}
+
+	.cta {
+		background: #11181f;
+		color: #f7efe1;
+		border: none;
+		padding: 12px 18px;
+		border-radius: 999px;
+		font-weight: 600;
+		cursor: pointer;
+		box-shadow: 0 12px 24px rgba(17, 24, 31, 0.25);
+	}
+
+	.ghost {
+		background: transparent;
+		border: 1px solid rgba(17, 24, 31, 0.2);
+		color: #1c2f3a;
+		padding: 12px 18px;
+		border-radius: 999px;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.viewer {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 18px;
+		align-items: start;
+		position: relative;
+		z-index: 1;
+		flex: 1;
+		min-height: 0;
+	}
+
+	.feed-shell {
+		height: 100%;
+		min-height: 0;
+		position: relative;
+	}
+
+	.engagement-hud {
+		position: absolute;
+		top: 12px;
+		right: 12px;
+		display: grid;
+		gap: 10px;
+		z-index: 3;
+	}
+
+	.hud-item {
+		padding: 8px 12px;
+		border-radius: 14px;
+		background: rgba(17, 24, 31, 0.85);
+		color: #f7efe1;
+		text-transform: uppercase;
+		letter-spacing: 0.2em;
+		font-size: 10px;
+		display: grid;
+		gap: 4px;
+	}
+
+	.hud-item strong {
+		font-size: 14px;
+		letter-spacing: 0.08em;
+	}
+
+	.like-hud {
+		border: 1px solid rgba(120, 240, 208, 0.6);
+		box-shadow: 0 10px 18px rgba(120, 240, 208, 0.3);
+	}
+
+	.donate-hud {
+		border: 1px solid rgba(255, 140, 92, 0.6);
+		box-shadow: 0 10px 18px rgba(255, 140, 92, 0.3);
+	}
+
+	.toast {
+		position: absolute;
+		left: 50%;
+		bottom: 24px;
+		transform: translateX(-50%) translateY(20px);
+		opacity: 0;
+		transition: opacity 0.3s ease, transform 0.3s ease;
+		padding: 10px 18px;
+		border-radius: 999px;
+		background: rgba(17, 24, 31, 0.92);
+		color: #f7efe1;
+		font-weight: 600;
+		z-index: 4;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		font-size: 11px;
+	}
+
+	.toast.show {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0);
+	}
+
+	.video-card {
+		background: rgba(255, 255, 255, 0.92);
+		border-radius: 28px;
+		padding: 16px;
+		box-shadow: 0 18px 30px rgba(17, 24, 31, 0.14);
+		border: 1px solid rgba(255, 255, 255, 0.9);
+		display: grid;
+		gap: 14px;
+		position: absolute;
+		inset: 0;
+		height: 100%;
+		min-height: 0;
+		opacity: 0;
+		pointer-events: none;
+		transform: translateY(12px) scale(0.98);
+		transition: opacity 0.25s ease, transform 0.3s ease;
+		user-select: none;
+		-webkit-user-select: none;
+	}
+
+	.video-card.active {
+		opacity: 1;
+		pointer-events: auto;
+		transform: translateY(0) scale(1);
+	}
+
+	.video-card.anim-up {
+		transform: translateY(-18px) scale(0.98);
+	}
+
+	.video-card.anim-down {
+		transform: translateY(18px) scale(0.98);
+	}
+
+	.video-card.anim-in {
+		animation: cardIn 0.32s ease;
+	}
+
+	.video-card.dragging {
+		transition: none;
+	}
+
+	.media {
+		position: relative;
+		border-radius: 22px;
+		background: linear-gradient(140deg, #1c2f3a 0%, #476a7f 60%, #efb074 100%);
+		min-height: 52vh;
+		flex: 1;
+		overflow: hidden;
+	}
+
+	.media-placeholder {
+		height: 100%;
+		display: grid;
+		place-items: center;
+		color: rgba(247, 239, 225, 0.9);
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		font-size: 12px;
+		pointer-events: none;
+	}
+
+	.media-overlay {
+		position: absolute;
+		top: 12px;
+		left: 12px;
+		display: flex;
+		gap: 8px;
+		z-index: 2;
+	}
+
+	.live {
+		background: rgba(17, 24, 31, 0.8);
+		color: #f7efe1;
+		padding: 6px 10px;
+		border-radius: 999px;
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.2em;
+	}
+
+	.difficulty {
+		background: rgba(255, 255, 255, 0.25);
+		color: #f7efe1;
+		padding: 6px 10px;
+		border-radius: 999px;
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.2em;
+	}
+
+	.chat-fab {
+		position: absolute;
+		right: 14px;
+		bottom: 14px;
+		background: linear-gradient(140deg, #1b1f2a, #1f4d6b);
+		color: #f7efe1;
+		border: none;
+		border-radius: 999px;
+		padding: 10px 16px;
+		font-weight: 600;
+		cursor: pointer;
+		z-index: 2;
+		box-shadow: 0 14px 24px rgba(17, 24, 31, 0.3);
+	}
+
+	.project-info {
+		display: grid;
+		gap: 12px;
+	}
+
+	.project-info h1 {
+		font-family: 'Fraunces', serif;
+		font-size: clamp(24px, 3vw, 34px);
+		margin: 0;
+		color: #0f1a20;
+	}
+
+	.tag {
+		margin: 0 0 8px;
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.2em;
+		color: #5c7280;
+	}
+
+	.creator {
+		margin: 6px 0 0;
+		font-size: 14px;
+		color: #4f6572;
+	}
+
+	.summary {
+		margin: 0;
+		line-height: 1.5;
+		color: #263844;
+	}
+
+	.progress {
+		display: grid;
+		gap: 10px;
+	}
+
+	.progress-bar {
+		height: 8px;
+		background: rgba(23, 37, 46, 0.1);
+		border-radius: 999px;
+		overflow: hidden;
+	}
+
+	.progress-bar::after {
+		content: '';
+		height: 100%;
+		width: var(--fill);
+		background: linear-gradient(90deg, #ec8f49, #e8c08b);
+		display: block;
+		border-radius: inherit;
+	}
+
+	.progress-meta {
+		display: flex;
+		justify-content: space-between;
+		font-size: 13px;
+		color: #4a5f6b;
+	}
+
+	.swipe-hint {
+		margin: 0;
+		font-size: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.2em;
+		color: #5b6f7b;
+	}
+
+	.swipe-overlay {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-items: center;
+		font-size: 24px;
+		letter-spacing: 0.2em;
+		text-transform: uppercase;
+		font-weight: 700;
+		opacity: 0;
+		transform: scale(0.95);
+		transition: opacity 0.2s ease, transform 0.2s ease;
+		pointer-events: none;
+		z-index: 1;
+	}
+
+	.swipe-like {
+		background: linear-gradient(120deg, rgba(120, 240, 208, 0.75), rgba(255, 255, 255, 0.15));
+		color: #0b3d33;
+	}
+
+	.swipe-donate {
+		background: linear-gradient(120deg, rgba(255, 140, 92, 0.8), rgba(255, 255, 255, 0.15));
+		color: #6b1e0b;
+	}
+
+	.video-card.show-like .swipe-like,
+	.video-card.flash-like .swipe-like {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	.video-card.show-donate .swipe-donate,
+	.video-card.flash-donate .swipe-donate {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	.side-actions {
+		display: none;
+		gap: 12px;
+		min-width: 160px;
+	}
+
+	.pill {
+		padding: 10px 14px;
+		border-radius: 999px;
+		background: rgba(17, 24, 31, 0.9);
+		color: #f7efe1;
+		border: none;
+		font-weight: 600;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.chat-pill {
+		background: linear-gradient(140deg, #1b1f2a, #1f4d6b);
+	}
+
+	.feedback-pill {
+		background: linear-gradient(140deg, #2a1f1b, #c2693b);
+	}
+
+	@keyframes cardIn {
+		from {
+			transform: translateY(20px) scale(0.98);
+			opacity: 0.6;
+		}
+		to {
+			transform: translateY(0) scale(1);
+			opacity: 1;
+		}
+	}
+
+	.next-card {
+		background: rgba(255, 255, 255, 0.85);
+		border-radius: 18px;
+		padding: 12px 14px;
+		box-shadow: 0 12px 22px rgba(17, 24, 31, 0.12);
+	}
+
+	.next-label {
+		margin: 0 0 6px;
+		text-transform: uppercase;
+		letter-spacing: 0.18em;
+		font-size: 11px;
+		color: #6a7f8b;
+	}
+
+	.next-title {
+		margin: 0 0 4px;
+		font-weight: 600;
+	}
+
+	.next-meta {
+		margin: 0;
+		font-size: 12px;
+		color: #4f6572;
+	}
+
+	@media (max-width: 1100px) {
+		.viewer {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (max-width: 760px) {
+		.topbar {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+
+		.prize-pot {
+			width: 100%;
+		}
+
+		.page {
+			--topbar-height: 88px;
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.viewer {
+			grid-template-columns: minmax(0, 1fr) 180px;
+		}
+
+		.side-actions {
+			display: grid;
+		}
+
+		.chat-fab {
+			display: none;
+		}
+	}
+</style>
