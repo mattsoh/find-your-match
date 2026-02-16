@@ -174,6 +174,16 @@ const projects = [
 		toastTimeout = window.setTimeout(() => toastEl.classList.remove('show'), 1400);
 	};
 
+	const flashReaction = (type) => {
+		const card = cards[activeIndex];
+		if (!card) {
+			return;
+		}
+		const className = type === 'like' ? 'flash-like' : 'flash-donate';
+		card.classList.add(className);
+		window.setTimeout(() => card.classList.remove(className), 650);
+	};
+
 	const clearClasses = (card) => {
 		card.classList.remove('show-like', 'show-donate', 'flash-like', 'flash-donate');
 	};
@@ -300,12 +310,14 @@ const projects = [
 		}
 		if (event.key === 'ArrowLeft') {
 			event.preventDefault();
+			flashReaction('donate');
 			showToast('Donate $25 (demo)');
 			donateCount += 25;
 			updateCounts();
 		}
 		if (event.key === 'ArrowRight') {
 			event.preventDefault();
+			flashReaction('like');
 			showToast('Liked +1');
 			likeCount += 1;
 			updateCounts();
